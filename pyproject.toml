@@ -1,0 +1,22 @@
+[project]
+name = "ribo-graph"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.5",
+    "pandas>=3.1.1",
+    "panel>=1.11.0",
+    "plotly>=7.2.0",
+    "viennarna>=2.8.0",
+]
+
+[dependency-groups]
+research = [
+    "ipykernel>=7.4.0",
+    "ipywidgets>=8.1.9",
+    "itables>=2.9.1",
+    "jupyterlab>=4.6.6",
+]
+
