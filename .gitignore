@@ -13,5 +13,5 @@ wheels/
 .ipynb_checkpoints/
 *.pyc
 .DS_Store
+.virtual_documents/
 
-.virtual_documents/notebooks/ViiennaRNA_review.ipynb
