@@ -1,0 +1,27 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
+  wget \
+  curl \
+  tar \
+  ca-certificates \
+  libgsl-dev \
+  libmpfr-dev \
+  liblapack-dev \
+  liblapacke-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tools
+
+RUN wget -q https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_8_x/ViennaRNA-2.8.0.tar.gz \
+  && tar -xzf ViennaRNA-2.8.0.tar.gz \
+  && cd ViennaRNA-2.8.0 \
+  && ./configure --disable-lto --without-swig --without-perl --without-python \
+  && make && make install \
+  && cd .. && rm -rf ViennaRNA-2.8.0*
+
+# barriers: https://www.tbi.univie.ac.at/RNA/download/sourcecode/1_8_x/Barriers-1.8.1.tar.gz
+
+# treekin: https://www.tbi.univie.ac.at/RNA/download/sourcecode/0_5_x/Treekin-0.5.1.tar.gz
+

@@ -14,3 +14,4 @@ wheels/
 *.pyc
 .DS_Store
 
+.virtual_documents/notebooks/ViiennaRNA_review.ipynb
