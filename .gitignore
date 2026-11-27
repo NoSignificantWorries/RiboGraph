@@ -15,3 +15,5 @@ wheels/
 .DS_Store
 .virtual_documents/
 
+data/
+

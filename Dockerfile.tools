@@ -1,53 +1,122 @@
+# ==========================================
+# BUILDER
+# ==========================================
+
 FROM ubuntu:24.04 AS builder
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG VIENNARNA_VERSION=2.8.0
+ARG BARRIERS_VERSION=1.8.1
+ARG TREEKIN_VERSION=0.5.1
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  build-essential \
-  wget \
-  curl \
-  tar \
-  ca-certificates \
-  pkg-config \
-  gfortran \
-  libgsl-dev \
-  libmpfr-dev \
-  liblapack-dev \
-  liblapacke-dev \
-  && rm -rf /var/lib/apt/lists/*
+    build-essential \
+    wget \
+    curl \
+    tar \
+    ca-certificates \
+    pkg-config \
+    gfortran \
+    libgsl-dev \
+    libmpfr-dev \
+    liblapack-dev \
+    liblapacke-dev \
+    patch \
+    file \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tools
 
-RUN wget -q https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_8_x/ViennaRNA-2.8.0.tar.gz \
-  && tar -xzf ViennaRNA-2.8.0.tar.gz \
-  && cd ViennaRNA-2.8.0 \
-  && ./configure --prefix=/usr/local --disable-lto --without-swig --without-perl --without-python \
-  && make && make install \
-  && cd .. && rm -rf ViennaRNA-2.8.0*
+# ==========================================
+# ViennaRNA
+# ==========================================
 
-RUN wget -q https://github.com/ViennaRNA/Barriers/releases/download/v1.8.1/Barriers-1.8.1.tar.gz \
-    && tar -xzf Barriers-1.8.1.tar.gz \
-    && cd Barriers-1.8.1 \
+RUN wget -q \
+    https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_8_x/ViennaRNA-${VIENNARNA_VERSION}.tar.gz \
+    -O viennarna.tar.gz \
+    && tar -xzf viennarna.tar.gz \
+    && cd ViennaRNA-${VIENNARNA_VERSION} \
+    && ./configure \
+        --prefix=/usr/local \
+        --disable-lto \
+        --without-swig \
+        --without-perl \
+        --without-python \
+    && make -j"$(nproc)" \
+    && make install \
+    && cd /tools \
+    && rm -rf ViennaRNA-${VIENNARNA_VERSION} viennarna.tar.gz
+
+# ==========================================
+# Barriers
+# ==========================================
+
+RUN wget -q \
+    https://github.com/ViennaRNA/Barriers/releases/download/v${BARRIERS_VERSION}/Barriers-${BARRIERS_VERSION}.tar.gz \
+    -O barriers.tar.gz \
+    && tar -xzf barriers.tar.gz \
+    && cd Barriers-${BARRIERS_VERSION} \
     && ./configure --prefix=/usr/local \
-    && make && make install \
-    && cd .. && rm -rf Barriers-1.8.1*
+    && make -j"$(nproc)" \
+    && make install \
+    && cd /tools \
+    && rm -rf Barriers-${BARRIERS_VERSION} barriers.tar.gz
 
-RUN wget -q https://github.com/ViennaRNA/Treekin/releases/download/v0.5.1/Treekin-0.5.1.tar.gz \
-    && tar -xzf Treekin-0.5.1.tar.gz \
-    && cd Treekin-0.5.1 \
+# ==========================================
+# Treekin
+# ==========================================
+
+RUN wget -q \
+    https://github.com/ViennaRNA/Treekin/releases/download/v${TREEKIN_VERSION}/Treekin-${TREEKIN_VERSION}.tar.gz \
+    -O treekin.tar.gz \
+    && tar -xzf treekin.tar.gz \
+    && cd Treekin-${TREEKIN_VERSION} \
     && sed -i 's/ifail, info);/ifail, info, int(0), int(0), int(0));/' src/calcpp.h \
     && sed -i 's/lwork, iwork, info);/lwork, iwork, info, int(0), int(0), int(0), int(0));/' src/calcpp.h \
     && ./configure --prefix=/usr/local \
-    && make && make install \
-    && cd .. && rm -rf Treekin-0.5.1*
+    && make -j"$(nproc)" \
+    && make install \
+    && cd /tools \
+    && rm -rf Treekin-${TREEKIN_VERSION} treekin.tar.gz
 
+# ==========================================
+# RUNTIME
+# ==========================================
 
 FROM ubuntu:24.04 AS runtime
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  libgsl27 libmpfr6 liblapack3 liblapacke  libgomp1 \
-  && rm -rf /var/lib/apt/lists/*
+    libgsl27 \
+    libmpfr6 \
+    liblapack3 \
+    liblapacke \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local /usr/local
-# COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
+
+RUN ldconfig
+
+ENV PATH="/usr/local/bin:${PATH}"
+
+# ==========================================
+# USER
+# ==========================================
+
+RUN groupadd --gid 10001 rnatools \
+    && useradd \
+        --uid 10001 \
+        --gid 10001 \
+        --create-home \
+        --shell /usr/sbin/nologin \
+        rnatools
+
+ENV HOME=/home/rnatools
 
 WORKDIR /tools
+
+USER 10001:10001
 

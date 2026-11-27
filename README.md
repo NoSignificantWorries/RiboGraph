@@ -19,7 +19,15 @@ docker run --rm -it --name rna-tools rna-tools:latest /bin/bash
 ### Run container in background
 
 ```bash
-docker run -d --name rna-tools -v $(pwd)/data/input:/tools/input -v $(pwd)/data/output:/tools/output rna-tools:latest tail -f /dev/null
+docker run -d \
+           --rm \
+           --name rna-tools \
+           --user "$(id -u):$(id -g)" \
+           --mount type=bind,source="$(pwd)/data/input",target=/tools/input \
+           --mount type=bind,source="$(pwd)/data/output",target=/tools/output \
+           rna-tools:latest \
+           tail -f /dev/null
+
 ```
 
 ```bash
