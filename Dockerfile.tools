@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   tar \
   ca-certificates \
+  pkg-config \
+  gfortran \
   libgsl-dev \
   libmpfr-dev \
   liblapack-dev \
@@ -17,11 +19,35 @@ WORKDIR /tools
 RUN wget -q https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_8_x/ViennaRNA-2.8.0.tar.gz \
   && tar -xzf ViennaRNA-2.8.0.tar.gz \
   && cd ViennaRNA-2.8.0 \
-  && ./configure --disable-lto --without-swig --without-perl --without-python \
+  && ./configure --prefix=/usr/local --disable-lto --without-swig --without-perl --without-python \
   && make && make install \
   && cd .. && rm -rf ViennaRNA-2.8.0*
 
-# barriers: https://www.tbi.univie.ac.at/RNA/download/sourcecode/1_8_x/Barriers-1.8.1.tar.gz
+RUN wget -q https://github.com/ViennaRNA/Barriers/releases/download/v1.8.1/Barriers-1.8.1.tar.gz \
+    && tar -xzf Barriers-1.8.1.tar.gz \
+    && cd Barriers-1.8.1 \
+    && ./configure --prefix=/usr/local \
+    && make && make install \
+    && cd .. && rm -rf Barriers-1.8.1*
 
-# treekin: https://www.tbi.univie.ac.at/RNA/download/sourcecode/0_5_x/Treekin-0.5.1.tar.gz
+RUN wget -q https://github.com/ViennaRNA/Treekin/releases/download/v0.5.1/Treekin-0.5.1.tar.gz \
+    && tar -xzf Treekin-0.5.1.tar.gz \
+    && cd Treekin-0.5.1 \
+    && sed -i 's/ifail, info);/ifail, info, int(0), int(0), int(0));/' src/calcpp.h \
+    && sed -i 's/lwork, iwork, info);/lwork, iwork, info, int(0), int(0), int(0), int(0));/' src/calcpp.h \
+    && ./configure --prefix=/usr/local \
+    && make && make install \
+    && cd .. && rm -rf Treekin-0.5.1*
+
+
+FROM ubuntu:24.04 AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  libgsl27 libmpfr6 liblapack3 liblapacke  libgomp1 \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local /usr/local
+# COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
+
+WORKDIR /tools
 
